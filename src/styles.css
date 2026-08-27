@@ -120,11 +120,20 @@ nav button:hover {
   display: grid;
   grid-template-rows: 34px minmax(0, 1fr);
   min-height: 0;
-  margin: 8px;
+  margin: 0;
   overflow: hidden;
   border: 1px solid #2b303a;
   border-radius: 5px;
   background: #171a20;
+}
+
+.main-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px;
 }
 
 .panel-heading {
@@ -157,6 +166,27 @@ nav button:hover {
   position: relative;
   min-width: 0;
   min-height: 0;
+}
+
+.uv-canvas {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  touch-action: none;
+}
+
+.uv-canvas canvas {
+  display: block;
+}
+
+.uv-empty-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #666e7d;
+  font-size: 12px;
+  pointer-events: none;
 }
 
 .mesh-stats {
