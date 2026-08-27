@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { readModelFile, type ModelFile } from '../import/modelFile'
+import type { MeshDocument } from '../mesh/MeshData'
 import { Viewport3D, type ViewportStatus } from '../viewport3d/Viewport3D'
 
 export function App() {
@@ -7,6 +8,7 @@ export function App() {
   const [model, setModel] = useState<ModelFile | null>(null)
   const [status, setStatus] = useState<ViewportStatus>({ kind: 'idle' })
   const [isDragging, setIsDragging] = useState(false)
+  const [meshDocument, setMeshDocument] = useState<MeshDocument | null>(null)
 
   async function openFile(file: File | undefined) {
     if (!file) return
@@ -72,7 +74,29 @@ export function App() {
           <span>VIEWPORT 3D</span>
           <span className="viewport-hint">Orbit · Pan · Zoom</span>
         </div>
-        <Viewport3D model={model} onStatusChange={setStatus} />
+        <div className="viewport-region">
+          <Viewport3D model={model} onStatusChange={setStatus} onMeshDataChange={setMeshDocument} />
+          {meshDocument && (
+            <aside className="mesh-stats" aria-label="Mesh statistics">
+              <h2>Mesh Data</h2>
+              <dl>
+                <div><dt>Meshes</dt><dd>{meshDocument.summary.meshes.toLocaleString()}</dd></div>
+                <div><dt>Vertices</dt><dd>{meshDocument.summary.vertices.toLocaleString()}</dd></div>
+                <div><dt>Triangles</dt><dd>{meshDocument.summary.triangles.toLocaleString()}</dd></div>
+                <div><dt>Edges</dt><dd>{meshDocument.summary.edges.toLocaleString()}</dd></div>
+                <div><dt>Boundary</dt><dd>{meshDocument.summary.boundaryEdges.toLocaleString()}</dd></div>
+                <div><dt>UV meshes</dt><dd>{meshDocument.summary.meshesWithUvs}/{meshDocument.summary.meshes}</dd></div>
+              </dl>
+              {(meshDocument.summary.degenerateTriangles > 0 || meshDocument.summary.nonManifoldEdges > 0 || meshDocument.summary.meshesWithoutNormals > 0) && (
+                <div className="mesh-warning">
+                  {meshDocument.summary.degenerateTriangles > 0 && <span>{meshDocument.summary.degenerateTriangles} degenerate triangles</span>}
+                  {meshDocument.summary.nonManifoldEdges > 0 && <span>{meshDocument.summary.nonManifoldEdges} non-manifold edges</span>}
+                  {meshDocument.summary.meshesWithoutNormals > 0 && <span>{meshDocument.summary.meshesWithoutNormals} meshes missing normals</span>}
+                </div>
+              )}
+            </aside>
+          )}
+        </div>
       </section>
 
       <footer className="toolbar">

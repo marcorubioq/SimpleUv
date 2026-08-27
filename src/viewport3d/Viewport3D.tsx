@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import type { Group } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { ModelFile } from '../import/modelFile'
+import { extractMeshDocument } from '../mesh/extractMeshData'
+import type { MeshDocument } from '../mesh/MeshData'
 
 export type ViewportStatus =
   | { kind: 'idle' }
@@ -14,6 +16,7 @@ export type ViewportStatus =
 interface Viewport3DProps {
   model: ModelFile | null
   onStatusChange: (status: ViewportStatus) => void
+  onMeshDataChange: (document: MeshDocument | null) => void
 }
 
 function TestCube() {
@@ -25,7 +28,7 @@ function TestCube() {
   )
 }
 
-function LoadedModel({ model, onStatusChange }: Viewport3DProps) {
+function LoadedModel({ model, onStatusChange, onMeshDataChange }: Viewport3DProps) {
   const [scene, setScene] = useState<Group | null>(null)
 
   useEffect(() => {
@@ -33,6 +36,7 @@ function LoadedModel({ model, onStatusChange }: Viewport3DProps) {
     const loader = new GLTFLoader()
 
     setScene(null)
+    onMeshDataChange(null)
     onStatusChange({ kind: 'loading', message: `Parsing ${model?.name ?? 'model'}...` })
 
     if (!model) return
@@ -42,8 +46,20 @@ function LoadedModel({ model, onStatusChange }: Viewport3DProps) {
       '',
       (gltf) => {
         if (!active) return
-        setScene(gltf.scene)
-        onStatusChange({ kind: 'ready', message: `${model.name} loaded successfully` })
+        try {
+          const document = extractMeshDocument(gltf.scene)
+          setScene(gltf.scene)
+          onMeshDataChange(document)
+          onStatusChange({
+            kind: 'ready',
+            message: `${model.name}: ${document.summary.vertices.toLocaleString()} vertices, ${document.summary.triangles.toLocaleString()} triangles`,
+          })
+        } catch (error) {
+          onStatusChange({
+            kind: 'error',
+            message: error instanceof Error ? error.message : `Could not analyze ${model.name}.`,
+          })
+        }
       },
       (error) => {
         if (!active) return
@@ -55,14 +71,14 @@ function LoadedModel({ model, onStatusChange }: Viewport3DProps) {
     return () => {
       active = false
     }
-  }, [model, onStatusChange])
+  }, [model, onMeshDataChange, onStatusChange])
 
   if (!scene) return null
 
   return <primitive object={scene} />
 }
 
-export function Viewport3D({ model, onStatusChange }: Viewport3DProps) {
+export function Viewport3D({ model, onStatusChange, onMeshDataChange }: Viewport3DProps) {
   return (
     <div className="viewport-canvas" data-testid="viewport-3d">
       <Canvas
@@ -82,7 +98,7 @@ export function Viewport3D({ model, onStatusChange }: Viewport3DProps) {
         <hemisphereLight args={['#dbe7ff', '#20242d', 0.8]} />
         {model ? (
           <Bounds fit clip observe margin={1.25}>
-            <LoadedModel model={model} onStatusChange={onStatusChange} />
+            <LoadedModel model={model} onStatusChange={onStatusChange} onMeshDataChange={onMeshDataChange} />
           </Bounds>
         ) : (
           <TestCube />

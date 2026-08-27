@@ -146,9 +146,76 @@ nav button:hover {
 }
 
 .viewport-canvas {
+  width: 100%;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   touch-action: none;
+}
+
+.viewport-region {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.mesh-stats {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  width: 190px;
+  padding: 12px;
+  border: 1px solid #343b48;
+  border-radius: 5px;
+  background: rgb(24 27 33 / 92%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
+  pointer-events: none;
+}
+
+.mesh-stats h2 {
+  margin: 0 0 8px;
+  color: #aebeff;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mesh-stats dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.mesh-stats dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mesh-stats dt,
+.mesh-stats dd {
+  margin: 0;
+  font-size: 12px;
+}
+
+.mesh-stats dt {
+  color: #858d9c;
+}
+
+.mesh-stats dd {
+  color: #e4e7ee;
+  font-variant-numeric: tabular-nums;
+}
+
+.mesh-warning {
+  display: grid;
+  gap: 3px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid #3a3f49;
+  color: #ffbd7a;
+  font-size: 11px;
 }
 
 .toolbar {
