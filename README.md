@@ -9,6 +9,8 @@ SimpleUV is a Windows-first, standalone UV layout application for 3D artists. Th
 - Three.js viewport rendered through React Three Fiber
 - Perspective camera with orbit, pan, and zoom controls
 - Grid, basic lighting, responsive canvas, and a temporary test cube
+- GLB/GLTF opening through the toolbar or drag and drop
+- Automatic camera framing and user-friendly load status
 
 ## Requirements
 
@@ -45,11 +47,11 @@ src/app/           React application shell
 src/viewport3d/    Three.js 3D viewport
 ```
 
-Future milestones will add mesh import, internal topology, the native xatlas engine, a 2D UV editor, checker materials, packing controls, and GLB export. These are intentionally not part of the bootstrap milestone.
+Future milestones will add internal topology, the native xatlas engine, a 2D UV editor, checker materials, packing controls, and GLB export.
 
 ## Known limitations
 
 - The cube is a temporary renderer test object.
 - Menu actions and Auto UV are placeholders.
-- No model import, UV generation, 2D UV editor, checker, or export is implemented yet.
-
+- Standalone `.gltf` files that reference external `.bin` or texture files are not yet supported; use GLB for the most reliable import.
+- No UV generation, 2D UV editor, checker, or export is implemented yet.
