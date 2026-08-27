@@ -11,6 +11,8 @@ SimpleUV is a Windows-first, standalone UV layout application for 3D artists. Th
 - Grid, basic lighting, responsive canvas, and a temporary test cube
 - GLB/GLTF opening through the toolbar or drag and drop
 - Automatic camera framing and user-friendly load status
+- Internal typed-array mesh representation with faces and edge adjacency
+- Geometry statistics and checks for missing normals, degenerate triangles, and non-manifold edges
 
 ## Requirements
 
