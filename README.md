@@ -13,6 +13,7 @@ SimpleUV is a Windows-first, standalone UV layout application for 3D artists. Th
 - Automatic camera framing and user-friendly load status
 - Internal typed-array mesh representation with faces and edge adjacency
 - Geometry statistics and checks for missing normals, degenerate triangles, and non-manifold edges
+- Native C++ UV engine with vendored xatlas and separate chart/packing operations
 
 ## Requirements
 
@@ -41,10 +42,23 @@ npm start
 
 The renderer build is written to `dist/` and the Electron main process to `dist-electron/`.
 
+## Native engine
+
+The native engine vendors the MIT-licensed xatlas implementation at the revision documented in `native/xatlas/REVISION.md`. Build and test it independently with:
+
+```powershell
+npm run native:configure
+npm run native:build
+npm run native:test
+```
+
+`UvEngine` intentionally exposes chart computation and packing as separate operations so future packing changes do not need to recompute the unwrap.
+
 ## Project structure
 
 ```text
 desktop/electron/  Electron main process
+native/            C++ UV engine, xatlas, and native tests
 src/app/           React application shell
 src/viewport3d/    Three.js 3D viewport
 ```
