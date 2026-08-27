@@ -13,6 +13,7 @@ export function App() {
   const [meshDocument, setMeshDocument] = useState<MeshDocument | null>(null)
   const [uvResult, setUvResult] = useState<NativeUvResult | null>(null)
   const [isGeneratingUv, setIsGeneratingUv] = useState(false)
+  const [checkerEnabled, setCheckerEnabled] = useState(false)
 
   async function openFile(file: File | undefined) {
     if (!file) return
@@ -22,6 +23,7 @@ export function App() {
     try {
       const nextModel = await readModelFile(file)
       setUvResult(null)
+      setCheckerEnabled(false)
       setModel(nextModel)
       setStatus({ kind: 'loading', message: `Loading ${file.name}...` })
     } catch (error) {
@@ -120,7 +122,13 @@ export function App() {
             <span className="viewport-hint">Orbit · Pan · Zoom</span>
           </div>
           <div className="viewport-region">
-            <Viewport3D model={model} onStatusChange={setStatus} onMeshDataChange={setMeshDocument} />
+            <Viewport3D
+              model={model}
+              onStatusChange={setStatus}
+              onMeshDataChange={setMeshDocument}
+              uvResult={uvResult}
+              checkerEnabled={checkerEnabled}
+            />
             {meshDocument && (
             <aside className="mesh-stats" aria-label="Mesh statistics">
               <h2>Mesh Data</h2>
@@ -177,6 +185,14 @@ export function App() {
           onClick={() => void generateUv()}
         >
           {isGeneratingUv ? 'GENERATING…' : 'AUTO UV'}
+        </button>
+        <button
+          className={`toolbar-action${checkerEnabled ? ' is-active' : ''}`}
+          type="button"
+          disabled={!uvResult}
+          onClick={() => setCheckerEnabled((enabled) => !enabled)}
+        >
+          CHECKER
         </button>
         <span className={`status-message status-${status.kind}`}>
           {status.kind === 'idle' && 'Open or drop a GLB/GLTF model'}
