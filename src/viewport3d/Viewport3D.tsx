@@ -1,11 +1,14 @@
 import { Bounds, OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
-import { useEffect, useState } from 'react'
-import type { Group } from 'three'
+import { useEffect, useMemo, useState } from 'react'
+import type { Group, Material, Mesh } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { ModelFile } from '../import/modelFile'
 import { extractMeshDocument } from '../mesh/extractMeshData'
 import type { MeshDocument } from '../mesh/MeshData'
+import { applyUvResultToScene } from '../mesh/applyUvResult'
+import type { NativeUvResult } from '../native/uvTypes'
+import { createCheckerMaterial } from './checkerMaterial'
 
 export type ViewportStatus =
   | { kind: 'idle' }
@@ -17,6 +20,8 @@ interface Viewport3DProps {
   model: ModelFile | null
   onStatusChange: (status: ViewportStatus) => void
   onMeshDataChange: (document: MeshDocument | null) => void
+  uvResult: NativeUvResult | null
+  checkerEnabled: boolean
 }
 
 function TestCube() {
@@ -28,14 +33,17 @@ function TestCube() {
   )
 }
 
-function LoadedModel({ model, onStatusChange, onMeshDataChange }: Viewport3DProps) {
+function LoadedModel({ model, onStatusChange, onMeshDataChange, uvResult, checkerEnabled }: Viewport3DProps) {
   const [scene, setScene] = useState<Group | null>(null)
+  const [document, setDocument] = useState<MeshDocument | null>(null)
+  const checkerMaterial = useMemo(() => createCheckerMaterial(), [])
 
   useEffect(() => {
     let active = true
     const loader = new GLTFLoader()
 
     setScene(null)
+    setDocument(null)
     onMeshDataChange(null)
     onStatusChange({ kind: 'loading', message: `Parsing ${model?.name ?? 'model'}...` })
 
@@ -49,6 +57,7 @@ function LoadedModel({ model, onStatusChange, onMeshDataChange }: Viewport3DProp
         try {
           const document = extractMeshDocument(gltf.scene)
           setScene(gltf.scene)
+          setDocument(document)
           onMeshDataChange(document)
           onStatusChange({
             kind: 'ready',
@@ -73,12 +82,43 @@ function LoadedModel({ model, onStatusChange, onMeshDataChange }: Viewport3DProp
     }
   }, [model, onMeshDataChange, onStatusChange])
 
+  useEffect(() => {
+    if (!scene || !document || !uvResult) return
+    try {
+      return applyUvResultToScene(scene, document, uvResult)
+    } catch (error) {
+      onStatusChange({
+        kind: 'error',
+        message: error instanceof Error ? error.message : 'Could not apply generated UVs to the model.',
+      })
+    }
+  }, [document, onStatusChange, scene, uvResult])
+
+  useEffect(() => {
+    if (!scene) return
+    const originals = new Map<Mesh, Material | Material[]>()
+    scene.traverse((object) => {
+      if (!('isMesh' in object) || object.isMesh !== true) return
+      const mesh = object as Mesh
+      originals.set(mesh, mesh.material)
+      if (checkerEnabled) mesh.material = checkerMaterial
+    })
+    return () => {
+      for (const [mesh, material] of originals) mesh.material = material
+    }
+  }, [checkerEnabled, checkerMaterial, scene])
+
+  useEffect(() => () => {
+    checkerMaterial.map?.dispose()
+    checkerMaterial.dispose()
+  }, [checkerMaterial])
+
   if (!scene) return null
 
   return <primitive object={scene} />
 }
 
-export function Viewport3D({ model, onStatusChange, onMeshDataChange }: Viewport3DProps) {
+export function Viewport3D({ model, onStatusChange, onMeshDataChange, uvResult, checkerEnabled }: Viewport3DProps) {
   return (
     <div className="viewport-canvas" data-testid="viewport-3d">
       <Canvas
@@ -98,7 +138,13 @@ export function Viewport3D({ model, onStatusChange, onMeshDataChange }: Viewport
         <hemisphereLight args={['#dbe7ff', '#20242d', 0.8]} />
         {model ? (
           <Bounds fit clip observe margin={1.25}>
-            <LoadedModel model={model} onStatusChange={onStatusChange} onMeshDataChange={onMeshDataChange} />
+            <LoadedModel
+              model={model}
+              onStatusChange={onStatusChange}
+              onMeshDataChange={onMeshDataChange}
+              uvResult={uvResult}
+              checkerEnabled={checkerEnabled}
+            />
           </Bounds>
         ) : (
           <TestCube />
