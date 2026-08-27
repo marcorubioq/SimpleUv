@@ -38,4 +38,3 @@ export interface NativeUvResult {
   chartDurationMs: number
   packDurationMs: number
 }
-

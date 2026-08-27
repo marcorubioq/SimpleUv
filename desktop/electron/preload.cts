@@ -18,4 +18,3 @@ interface NativeUvRequest {
 contextBridge.exposeInMainWorld('simpleUv', {
   generateUv: (request: NativeUvRequest) => ipcRenderer.invoke('uv:generate', request),
 })
-
