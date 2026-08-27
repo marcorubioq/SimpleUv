@@ -12,6 +12,13 @@ bool uvIsNormalized(const simpleuv::OutputVertex& vertex) {
            vertex.v >= -epsilon && vertex.v <= 1.0F + epsilon;
 }
 
+float uvTriangleArea(
+    const simpleuv::OutputVertex& a,
+    const simpleuv::OutputVertex& b,
+    const simpleuv::OutputVertex& c) {
+    return std::abs((b.u - a.u) * (c.v - a.v) - (b.v - a.v) * (c.u - a.u)) * 0.5F;
+}
+
 } // namespace
 
 int main() {
@@ -55,11 +62,26 @@ int main() {
         }
     }
 
+    std::uint32_t degenerateUvTriangles = 0;
+    const auto& outputMesh = result.meshes[0];
+    for (std::size_t index = 0; index + 2 < outputMesh.indices.size(); index += 3) {
+        const auto area = uvTriangleArea(
+            outputMesh.vertices[outputMesh.indices[index]],
+            outputMesh.vertices[outputMesh.indices[index + 1]],
+            outputMesh.vertices[outputMesh.indices[index + 2]]);
+        if (area <= 1.0e-8F) ++degenerateUvTriangles;
+    }
+    if (degenerateUvTriangles > 0) {
+        std::cerr << degenerateUvTriangles << " output UV triangles are degenerate.\n";
+        return 5;
+    }
+
     std::cout << "xatlas native smoke test passed\n"
               << "  input vertices: " << result.inputVertices << '\n'
               << "  output vertices: " << result.outputVertices << '\n'
               << "  triangles: " << result.inputTriangles << '\n'
               << "  charts: " << result.chartCount << '\n'
+              << "  non-degenerate UV triangles: " << result.inputTriangles << '\n'
               << "  atlas: " << result.width << 'x' << result.height << '\n'
               << "  chart ms: " << result.chartDurationMs << '\n'
               << "  pack ms: " << result.packDurationMs << '\n';

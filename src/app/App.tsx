@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { readModelFile, type ModelFile } from '../import/modelFile'
 import type { MeshDocument } from '../mesh/MeshData'
 import type { NativeUvResult } from '../native/uvTypes'
+import { UvEditor2D } from '../uv-editor/UvEditor2D'
 import { Viewport3D, type ViewportStatus } from '../viewport3d/Viewport3D'
 
 export function App() {
@@ -112,14 +113,15 @@ export function App() {
         />
       </header>
 
-      <section className="workspace">
-        <div className="panel-heading">
-          <span>VIEWPORT 3D</span>
-          <span className="viewport-hint">Orbit · Pan · Zoom</span>
-        </div>
-        <div className="viewport-region">
-          <Viewport3D model={model} onStatusChange={setStatus} onMeshDataChange={setMeshDocument} />
-          {meshDocument && (
+      <div className="main-workspace">
+        <section className="workspace">
+          <div className="panel-heading">
+            <span>VIEWPORT 3D</span>
+            <span className="viewport-hint">Orbit · Pan · Zoom</span>
+          </div>
+          <div className="viewport-region">
+            <Viewport3D model={model} onStatusChange={setStatus} onMeshDataChange={setMeshDocument} />
+            {meshDocument && (
             <aside className="mesh-stats" aria-label="Mesh statistics">
               <h2>Mesh Data</h2>
               <dl>
@@ -150,9 +152,22 @@ export function App() {
                 </div>
               )}
             </aside>
-          )}
-        </div>
-      </section>
+            )}
+          </div>
+        </section>
+
+        <section className="workspace">
+          <div className="panel-heading">
+            <span>UV EDITOR 2D</span>
+            <span className="viewport-hint">
+              {uvResult
+                ? `${uvResult.chartCount} islands · ${uvResult.meshes.reduce((total, mesh) => total + mesh.indices.length / 3, 0)} triangles`
+                : 'Pan · Zoom · 0–1 Space'}
+            </span>
+          </div>
+          <UvEditor2D result={uvResult} />
+        </section>
+      </div>
 
       <footer className="toolbar">
         <button

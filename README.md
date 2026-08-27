@@ -15,6 +15,7 @@ SimpleUV is a Windows-first, standalone UV layout application for 3D artists. Th
 - Geometry statistics and checks for missing normals, degenerate triangles, and non-manifold edges
 - Native C++ UV engine with vendored xatlas and separate chart/packing operations
 - Binary Electron-to-C++ bridge and functional Auto UV command
+- Read-only orthographic UV editor with island faces, edges, vertices, pan, and zoom
 
 ## Requirements
 
