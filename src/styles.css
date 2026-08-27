@@ -1,0 +1,134 @@
+:root {
+  color: #e8ebf2;
+  background: #111318;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+button {
+  color: inherit;
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-rows: 42px minmax(0, 1fr) 52px;
+  width: 100%;
+  height: 100%;
+  background: #111318;
+}
+
+.titlebar,
+.toolbar {
+  display: flex;
+  align-items: center;
+  border-color: #292d36;
+  background: #181b21;
+}
+
+.titlebar {
+  gap: 24px;
+  padding: 0 16px;
+  border-bottom: 1px solid #292d36;
+}
+
+.brand {
+  color: #9eb3ff;
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+nav {
+  display: flex;
+  align-self: stretch;
+}
+
+nav button {
+  padding: 0 13px;
+  border: 0;
+  background: transparent;
+  color: #b7bdc9;
+  cursor: default;
+}
+
+nav button:hover {
+  background: #232731;
+  color: #ffffff;
+}
+
+.milestone {
+  margin-left: auto;
+  color: #717887;
+  font-size: 12px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-rows: 34px minmax(0, 1fr);
+  min-height: 0;
+  margin: 8px;
+  overflow: hidden;
+  border: 1px solid #2b303a;
+  border-radius: 5px;
+  background: #171a20;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid #2b303a;
+  color: #c7ccd6;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.viewport-hint {
+  color: #6f7786;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.viewport-canvas {
+  min-width: 0;
+  min-height: 0;
+  touch-action: none;
+}
+
+.toolbar {
+  gap: 16px;
+  padding: 0 12px;
+  border-top: 1px solid #292d36;
+  color: #707785;
+  font-size: 12px;
+}
+
+.primary-action {
+  min-width: 112px;
+  padding: 8px 18px;
+  border: 1px solid #3e4658;
+  border-radius: 4px;
+  background: #252a35;
+  color: #8f98aa;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+}
+
