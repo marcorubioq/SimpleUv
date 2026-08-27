@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { readModelFile, type ModelFile } from '../import/modelFile'
 import type { MeshDocument } from '../mesh/MeshData'
+import type { NativeUvResult } from '../native/uvTypes'
 import { Viewport3D, type ViewportStatus } from '../viewport3d/Viewport3D'
 
 export function App() {
@@ -9,6 +10,8 @@ export function App() {
   const [status, setStatus] = useState<ViewportStatus>({ kind: 'idle' })
   const [isDragging, setIsDragging] = useState(false)
   const [meshDocument, setMeshDocument] = useState<MeshDocument | null>(null)
+  const [uvResult, setUvResult] = useState<NativeUvResult | null>(null)
+  const [isGeneratingUv, setIsGeneratingUv] = useState(false)
 
   async function openFile(file: File | undefined) {
     if (!file) return
@@ -17,6 +20,7 @@ export function App() {
 
     try {
       const nextModel = await readModelFile(file)
+      setUvResult(null)
       setModel(nextModel)
       setStatus({ kind: 'loading', message: `Loading ${file.name}...` })
     } catch (error) {
@@ -24,6 +28,45 @@ export function App() {
         kind: 'error',
         message: error instanceof Error ? error.message : 'The model could not be opened.',
       })
+    }
+  }
+
+  async function generateUv() {
+    if (!meshDocument || isGeneratingUv) return
+
+    setIsGeneratingUv(true)
+    setUvResult(null)
+    setStatus({ kind: 'loading', message: 'Generating UV charts and packing...' })
+
+    try {
+      const result = await window.simpleUv.generateUv({
+        meshes: meshDocument.meshes.map((mesh) => ({
+          positions: mesh.positions,
+          normals: mesh.normals,
+          indices: mesh.indices,
+        })),
+        options: {
+          resolution: 1024,
+          padding: 4,
+          rotateCharts: true,
+          rotateChartsToAxis: true,
+          bruteForce: false,
+        },
+      })
+
+      if (!result.success) throw new Error(result.error || 'Native UV generation failed.')
+      setUvResult(result)
+      setStatus({
+        kind: 'ready',
+        message: `AUTO UV complete: ${result.chartCount} charts, ${result.outputVertices.toLocaleString()} output vertices`,
+      })
+    } catch (error) {
+      setStatus({
+        kind: 'error',
+        message: error instanceof Error ? error.message : 'Native UV generation failed.',
+      })
+    } finally {
+      setIsGeneratingUv(false)
     }
   }
 
@@ -94,14 +137,31 @@ export function App() {
                   {meshDocument.summary.meshesWithoutNormals > 0 && <span>{meshDocument.summary.meshesWithoutNormals} meshes missing normals</span>}
                 </div>
               )}
+              {uvResult && (
+                <div className="uv-result">
+                  <h3>Native UV Result</h3>
+                  <dl>
+                    <div><dt>Charts</dt><dd>{uvResult.chartCount.toLocaleString()}</dd></div>
+                    <div><dt>UV vertices</dt><dd>{uvResult.outputVertices.toLocaleString()}</dd></div>
+                    <div><dt>Atlas</dt><dd>{uvResult.width} × {uvResult.height}</dd></div>
+                    <div><dt>Charts time</dt><dd>{uvResult.chartDurationMs.toFixed(2)} ms</dd></div>
+                    <div><dt>Pack time</dt><dd>{uvResult.packDurationMs.toFixed(2)} ms</dd></div>
+                  </dl>
+                </div>
+              )}
             </aside>
           )}
         </div>
       </section>
 
       <footer className="toolbar">
-        <button className="primary-action" type="button" disabled>
-          AUTO UV
+        <button
+          className="primary-action"
+          type="button"
+          disabled={!meshDocument || isGeneratingUv}
+          onClick={() => void generateUv()}
+        >
+          {isGeneratingUv ? 'GENERATING…' : 'AUTO UV'}
         </button>
         <span className={`status-message status-${status.kind}`}>
           {status.kind === 'idle' && 'Open or drop a GLB/GLTF model'}

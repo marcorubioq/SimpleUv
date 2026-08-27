@@ -28,6 +28,9 @@ endif()
 add_executable(native_smoke_test tests/native_smoke_test.cpp)
 target_link_libraries(native_smoke_test PRIVATE uv_engine)
 
+add_executable(uv_bridge uv_bridge.cpp)
+target_link_libraries(uv_bridge PRIVATE uv_engine xatlas)
+
 if(BUILD_TESTING)
     add_test(NAME native_smoke_test COMMAND native_smoke_test)
 endif()

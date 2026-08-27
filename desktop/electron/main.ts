@@ -1,6 +1,8 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { runNativeUv } from './nativeBridge.js'
+import type { NativeUvRequest } from './uvTypes.js'
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url))
 
@@ -14,6 +16,7 @@ function createMainWindow(): void {
     title: 'SimpleUV',
     autoHideMenuBar: true,
     webPreferences: {
+      preload: path.join(currentDirectory, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -27,6 +30,8 @@ function createMainWindow(): void {
     void window.loadFile(path.join(currentDirectory, '..', 'dist', 'index.html'))
   }
 }
+
+ipcMain.handle('uv:generate', (_event, request: NativeUvRequest) => runNativeUv(request))
 
 app.whenReady().then(() => {
   createMainWindow()
@@ -43,4 +48,3 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
-
