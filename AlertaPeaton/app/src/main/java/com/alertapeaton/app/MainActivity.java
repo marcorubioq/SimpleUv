@@ -12,7 +12,6 @@ import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.speech.tts.TextToSpeech;
 import android.view.Gravity;
-import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -51,17 +50,25 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     private PreviewView previewView;
     private TextView statusText;
     private TextView detailText;
+    private TextView guideText;
     private Switch assistSwitch;
+    private Switch guideSwitch;
     private ExecutorService cameraExecutor;
     private ObjectDetector detector;
     private TextToSpeech tts;
     private final AtomicBoolean processing = new AtomicBoolean(false);
 
     private boolean assistanceEnabled = true;
+    private boolean guidanceEnabled = true;
     private long lastAlertAt = 0L;
     private String lastAlert = "";
     private float previousCentralArea = 0f;
     private long previousCentralTime = 0L;
+
+    private String guidanceCandidate = "";
+    private int guidanceCandidateCount = 0;
+    private String lastGuidance = "";
+    private long lastGuidanceAt = 0L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,14 +88,21 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
         assistSwitch.setOnCheckedChangeListener((buttonView, checked) -> {
             assistanceEnabled = checked;
-            assistSwitch.setText(checked ? "Asistencia activa" : "Asistencia pausada");
-            if (checked) speak("Asistencia activada");
+            assistSwitch.setText(checked ? "Alertas activas" : "Alertas pausadas");
+            if (checked) speak("Alertas activadas");
+        });
+
+        guideSwitch.setOnCheckedChangeListener((buttonView, checked) -> {
+            guidanceEnabled = checked;
+            guideSwitch.setText(checked ? "Guía de camino activa" : "Guía de camino pausada");
+            if (checked) speak("Guía visual activada");
         });
 
         Button testButton = findViewById(1005);
         testButton.setOnClickListener(v -> {
-            vibrateDanger();
-            speak("Prueba de alerta. Obstáculo aproximándose por la izquierda");
+            guideText.setText("← DESVÍATE A LA IZQUIERDA");
+            vibrateLeft();
+            speak("Prueba. Desvíate un poco a la izquierda");
         });
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
@@ -120,34 +134,50 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         top.addView(statusText, new LinearLayout.LayoutParams(-1, -2));
 
         detailText = new TextView(this);
-        detailText.setText("La app analizará objetos frente a ti.");
+        detailText.setText("Analizando obstáculos y corredor libre frente a ti.");
         detailText.setTextColor(0xFFE0E0E0);
         detailText.setTextSize(16);
         detailText.setPadding(0, dp(6), 0, 0);
         top.addView(detailText, new LinearLayout.LayoutParams(-1, -2));
+
+        guideText = new TextView(this);
+        guideText.setText("↑ ESPERANDO CAMINO");
+        guideText.setTextColor(Color.WHITE);
+        guideText.setTextSize(25);
+        guideText.setGravity(Gravity.CENTER);
+        guideText.setPadding(dp(8), dp(12), dp(8), dp(8));
+        top.addView(guideText, new LinearLayout.LayoutParams(-1, -2));
 
         FrameLayout.LayoutParams topParams = new FrameLayout.LayoutParams(-1, -2, Gravity.TOP);
         root.addView(top, topParams);
 
         LinearLayout bottom = new LinearLayout(this);
         bottom.setOrientation(LinearLayout.VERTICAL);
-        bottom.setPadding(dp(16), dp(14), dp(16), dp(20));
+        bottom.setPadding(dp(16), dp(10), dp(16), dp(18));
         bottom.setBackgroundColor(0xD9000000);
 
         assistSwitch = new Switch(this);
         assistSwitch.setChecked(true);
-        assistSwitch.setText("Asistencia activa");
+        assistSwitch.setText("Alertas activas");
         assistSwitch.setTextColor(Color.WHITE);
-        assistSwitch.setTextSize(19);
-        assistSwitch.setMinHeight(dp(56));
+        assistSwitch.setTextSize(18);
+        assistSwitch.setMinHeight(dp(50));
         bottom.addView(assistSwitch, new LinearLayout.LayoutParams(-1, -2));
+
+        guideSwitch = new Switch(this);
+        guideSwitch.setChecked(true);
+        guideSwitch.setText("Guía de camino activa");
+        guideSwitch.setTextColor(Color.WHITE);
+        guideSwitch.setTextSize(18);
+        guideSwitch.setMinHeight(dp(50));
+        bottom.addView(guideSwitch, new LinearLayout.LayoutParams(-1, -2));
 
         Button testButton = new Button(this);
         testButton.setId(1005);
-        testButton.setText("Probar voz y vibración");
-        testButton.setTextSize(18);
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, dp(58));
-        bp.topMargin = dp(10);
+        testButton.setText("Probar indicación");
+        testButton.setTextSize(17);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, dp(54));
+        bp.topMargin = dp(6);
         bottom.addView(testButton, bp);
 
         FrameLayout.LayoutParams bottomParams = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
@@ -175,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
                 provider.unbindAll();
                 provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis);
-                runOnUiThread(() -> updateUi("Cámara activa", "Buscando obstáculos y movimiento frente a ti…"));
+                runOnUiThread(() -> updateUi("Cámara activa", "Buscando un corredor libre y obstáculos…"));
             } catch (Exception e) {
                 runOnUiThread(() -> updateUi("No se pudo abrir la cámara", safeMessage(e)));
             }
@@ -205,9 +235,16 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     }
 
     private void evaluate(List<DetectedObject> objects, int imageWidth, int imageHeight) {
-        if (objects == null || objects.isEmpty()) {
-            runOnUiThread(() -> updateUi("Trayectoria despejada", "Sin objetos relevantes al frente"));
+        if (objects == null) return;
+
+        Guidance guidance = calculateGuidance(objects, imageWidth, imageHeight);
+
+        if (objects.isEmpty()) {
             previousCentralArea = 0f;
+            runOnUiThread(() -> {
+                updateUi("Trayectoria despejada", "No hay obstáculos detectados en el corredor inmediato.");
+                applyGuidance(guidance, false);
+            });
             return;
         }
 
@@ -225,7 +262,10 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
 
         if (best == null) {
-            runOnUiThread(() -> updateUi("Atención lateral", objects.size() + " objeto(s) detectado(s), fuera de la trayectoria central"));
+            runOnUiThread(() -> {
+                updateUi("Camino visible", "Obstáculos laterales detectados. Evaluando por dónde continuar.");
+                applyGuidance(guidance, false);
+            });
             return;
         }
 
@@ -258,18 +298,119 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             danger = false;
             caution = true;
         } else {
-            status = "Objeto detectado";
-            detail = label + " a " + side + ". Riesgo bajo por ahora.";
+            status = "Camino en análisis";
+            detail = label + " a " + side + ". Buscando el corredor más libre.";
             danger = false;
             caution = false;
         }
 
         runOnUiThread(() -> {
             updateUi(status, detail);
-            if (!assistanceEnabled) return;
-            if (danger) alert(detail, true);
-            else if (caution) alert(detail, false);
+            if (assistanceEnabled) {
+                if (danger) alert(detail, true);
+                else if (caution) alert(detail, false);
+            }
+            applyGuidance(guidance, danger || caution);
         });
+    }
+
+    private Guidance calculateGuidance(List<DetectedObject> objects, int width, int height) {
+        float[] blocked = new float[]{0f, 0f, 0f};
+        float zoneWidth = width / 3f;
+        float corridorTop = height * 0.38f;
+        float corridorHeight = Math.max(1f, height - corridorTop);
+
+        for (DetectedObject obj : objects) {
+            Rect r = obj.getBoundingBox();
+            float top = Math.max(r.top, corridorTop);
+            float bottom = Math.min(r.bottom, height);
+            if (bottom <= top) continue;
+
+            float proximity = 0.35f + 0.65f * clamp(r.bottom / (float) height, 0f, 1f);
+            for (int z = 0; z < 3; z++) {
+                float zl = z * zoneWidth;
+                float zr = (z + 1) * zoneWidth;
+                float overlapW = Math.max(0f, Math.min(r.right, zr) - Math.max(r.left, zl));
+                float overlapH = bottom - top;
+                float ratio = (overlapW * overlapH) / Math.max(1f, zoneWidth * corridorHeight);
+                blocked[z] += ratio * proximity * 2.2f;
+            }
+        }
+
+        for (int i = 0; i < 3; i++) blocked[i] = clamp(blocked[i], 0f, 1f);
+
+        float left = blocked[0];
+        float center = blocked[1];
+        float right = blocked[2];
+
+        if (center < 0.18f) {
+            return new Guidance("STRAIGHT", "↑ SIGUE RECTO", "Sigue recto", center);
+        }
+
+        float bestSide = Math.min(left, right);
+        if (center > 0.58f && left > 0.50f && right > 0.50f) {
+            return new Guidance("STOP", "■ DETENTE", "Detente. El paso parece bloqueado", Math.min(center, bestSide));
+        }
+
+        if (left + 0.08f < right && left + 0.06f < center) {
+            return new Guidance("LEFT", "← VE A LA IZQUIERDA", "Desvíate un poco a la izquierda", left);
+        }
+
+        if (right + 0.08f < left && right + 0.06f < center) {
+            return new Guidance("RIGHT", "VE A LA DERECHA →", "Desvíate un poco a la derecha", right);
+        }
+
+        if (left < center - 0.04f) {
+            return new Guidance("LEFT", "← VE A LA IZQUIERDA", "Desvíate un poco a la izquierda", left);
+        }
+        if (right < center - 0.04f) {
+            return new Guidance("RIGHT", "VE A LA DERECHA →", "Desvíate un poco a la derecha", right);
+        }
+
+        return new Guidance("CAUTION", "↑ AVANZA CON CUIDADO", "Avanza con cuidado", center);
+    }
+
+    private void applyGuidance(Guidance guidance, boolean hazardSpeaking) {
+        guideText.setText(guidance.display);
+
+        if (!guidanceEnabled || !assistanceEnabled || hazardSpeaking) return;
+
+        if (guidance.key.equals(guidanceCandidate)) {
+            guidanceCandidateCount++;
+        } else {
+            guidanceCandidate = guidance.key;
+            guidanceCandidateCount = 1;
+        }
+
+        if (guidanceCandidateCount < 3) return;
+
+        long now = SystemClock.uptimeMillis();
+        long repeatMs = guidance.key.equals("STRAIGHT") ? 7000L : 3500L;
+        boolean changed = !guidance.key.equals(lastGuidance);
+        if (!changed && now - lastGuidanceAt < repeatMs) return;
+        if (now - lastGuidanceAt < 1800L) return;
+
+        lastGuidance = guidance.key;
+        lastGuidanceAt = now;
+
+        switch (guidance.key) {
+            case "LEFT":
+                vibrateLeft();
+                break;
+            case "RIGHT":
+                vibrateRight();
+                break;
+            case "STOP":
+                vibrateDanger();
+                break;
+            default:
+                break;
+        }
+        speak(guidance.spoken);
+    }
+
+    private float clamp(float value, float min, float max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private String labelFor(DetectedObject object) {
@@ -309,10 +450,17 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         vibrator().vibrate(VibrationEffect.createWaveform(new long[]{0, 120, 120, 120}, -1));
     }
 
+    private void vibrateLeft() {
+        vibrator().vibrate(VibrationEffect.createWaveform(new long[]{0, 190}, -1));
+    }
+
+    private void vibrateRight() {
+        vibrator().vibrate(VibrationEffect.createWaveform(new long[]{0, 90, 90, 90}, -1));
+    }
+
     private void updateUi(String status, String detail) {
         statusText.setText(status);
         detailText.setText(detail);
-        statusText.announceForAccessibility(status + ". " + detail);
     }
 
     private String safeMessage(Exception e) {
@@ -333,7 +481,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         if (requestCode == CAMERA_PERMISSION && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startCamera();
         } else {
-            updateUi("Permiso de cámara requerido", "Sin cámara la app no puede detectar obstáculos.");
+            updateUi("Permiso de cámara requerido", "Sin cámara la app no puede analizar el camino.");
         }
     }
 
@@ -345,6 +493,20 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         if (tts != null) {
             tts.stop();
             tts.shutdown();
+        }
+    }
+
+    private static class Guidance {
+        final String key;
+        final String display;
+        final String spoken;
+        final float blockedScore;
+
+        Guidance(String key, String display, String spoken, float blockedScore) {
+            this.key = key;
+            this.display = display;
+            this.spoken = spoken;
+            this.blockedScore = blockedScore;
         }
     }
 }
