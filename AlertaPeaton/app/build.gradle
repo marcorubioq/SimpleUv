@@ -10,13 +10,17 @@ android {
         applicationId 'com.alertapeaton.app'
         minSdk 26
         targetSdk 35
-        versionCode 4
-        versionName '0.3-path-guidance'
+        versionCode 5
+        versionName '0.4-semantic-segmentation'
     }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    androidResources {
+        noCompress 'tflite'
     }
 }
 
@@ -29,4 +33,5 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.activity:activity:1.10.0'
     implementation 'com.google.mlkit:object-detection:17.0.2'
+    implementation 'com.google.ai.edge.litert:litert:2.1.0'
 }
