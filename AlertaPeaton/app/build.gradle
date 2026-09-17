@@ -10,8 +10,8 @@ android {
         applicationId 'com.alertapeaton.app'
         minSdk 26
         targetSdk 35
-        versionCode 5
-        versionName '0.4-semantic-segmentation'
+        versionCode 6
+        versionName '0.5-gps-maps'
     }
 
     compileOptions {
@@ -34,4 +34,5 @@ dependencies {
     implementation 'androidx.activity:activity:1.10.0'
     implementation 'com.google.mlkit:object-detection:17.0.2'
     implementation 'com.google.ai.edge.litert:litert:1.4.1'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
 }
